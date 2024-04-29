@@ -5,99 +5,152 @@
     <meta charset="utf-8">
     <meta name="description" content="Example page of use pure Javascript JoyStick">
     <meta name="author" content="Roberto D'Amico">
-    <link rel="shortcut icon" type="image/png" href="http://bobboteck.github.io/img/roberto-damico-bobboteck.png">
     <style>
-        * {
+        .container {
+            padding: 20px;
+            width: 100%;
             box-sizing: border-box;
         }
 
-        body {
-            margin: 0px;
-            padding: 0px;
-            font-family: monospace;
+        .operation-box {
+            display: flex;
+            flex-direction: row;
+            width: 100%;
+            justify-content: center;
+            border: solid 1px #8dc63f;
+            border-radius: 5px;
         }
 
-        .row {
-            display: inline-flex;
-            clear: both;
+        .operation {
+            margin: 50px;
+            border: solid 2px white;
+            padding: 20px;
+            box-sizing: border-box;
+            border-radius: 5px;
+            background: #8dc63f;
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .operation:hover {
+            background-color: #4bff50;
+        }
+
+        .operation:active {
+            background-color: #4bff50;
+        }
+
+        .cell-center {
+            align-self: center;
+            display: table-cell;
+            vertical-align: middle;
+        }
+
+        .control-container {
+            margin-top: 10px;
+            border-radius: 5px;
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+            border: solid 1px #8dc63f;
         }
 
         .columnLateral {
             float: left;
-            width: 15%;
-            min-width: 300px;
+            /*min-width: 300px;*/
+            width: 50%;
+            text-align: center;
+            flex-direction: row;
+            justify-content: center;
+            align-items: center;
+            color: #2bc0e4;
         }
-
-        .columnCetral {
-            float: left;
-            width: 70%;
-            min-width: 300px;
-        }
-
-        #joy2Div {
-            width: 200px;
-            height: 200px;
-            margin: 50px
-        }
-
-        #joystick {
-            border: 1px solid #FF0000;
-        }
-
-        #joystick2 {
-            border: 1px solid #0000FF;
+        .control {
+            width: 300px;
+            height: 300px;
+            margin: 0 auto;
         }
     </style>
     <script src="joy.js"></script>
+    <script src="socket.io.min.js"></script>
 </head>
-<body>
-<!-- Example of two JoyStick integrated in the page structure -->
-<div class="row">
+<body class="container">
+<div class="operation-box">
+    <div class="operation" onclick="startFly()">一键起飞</div>
+    <div class="operation" onclick="FlyDown()">一键降落</div>
+</div>
+<div class="control-container cell-center">
     <div class="columnLateral">
-        <div id="joy1Div" style="width:200px;height:200px;margin:50px"></div>
-        Posizione X:<input id="joy1PosizioneX" type="text"/><br/>
-        Posizione Y:<input id="joy1PosizioneY" type="text"/><br/>
-        Direzione:<input id="joy1Direzione" type="text"/><br/>
-        X :<input id="joy1X" type="text"/></br>
-        Y :<input id="joy1Y" type="text"/>
+        <div id="joy1Div" class="control"></div>
     </div>
     <div class="columnLateral">
-        <div id="joy2Div"></div>
-        Posizione X:<input id="joy2PosizioneX" type="text"/></br>
-        Posizione Y:<input id="joy2PosizioneY" type="text"/></br>
-        Direzione:<input id="joy2Direzione" type="text"/></br>
-        X :<input id="joy2X" type="text"/></br>
-        Y :<input id="joy2Y" type="text"/>
+        <div id="joy2Div" class="control"></div>
     </div>
 </div>
 <script type="text/javascript">
+var connection = io('ws://127.0.0.1:8888/ws')
+connection.onopen = function () {
+    console.log('WebSocket connected')
+}
 
-var joy1IinputPosX = document.getElementById('joy1PosizioneX')
-var joy1InputPosY = document.getElementById('joy1PosizioneY')
-var joy1Direzione = document.getElementById('joy1Direzione')
-var joy1X = document.getElementById('joy1X')
-var joy1Y = document.getElementById('joy1Y')
+connection.onerror = function (error) {
+    console.log('WebSocket Error: ', error)
+    alert('WebSocket Error: ', error)
+}
 
-var Joy1 = new JoyStick('joy1Div', {}, function (stickData) {
-    joy1IinputPosX.value = stickData.xPosition
-    joy1InputPosY.value = stickData.yPosition
-    joy1Direzione.value = stickData.cardinalDirection
-    joy1X.value = stickData.x
-    joy1Y.value = stickData.y
+let throttle
+let pitch
+let roll
+let yaw
+
+function send_rc_data (throttle, pitch, roll, yaw, start_fly = 0, fly_down = 0) {
+    var data = [
+        1, parseInt(roll || 0), parseInt(yaw || 0), parseInt(throttle || 0), parseInt(pitch || 0),
+        start_fly, fly_down
+    ]
+    console.log(data)
+    // data = JSON.stringify(data)
+    // 遵循FS-i6传送数据规范
+    connection.emit('position', data)
+}
+
+var Joy1 = new JoyStick('joy1Div', {
+    internalLineWidth: 1,
+    externalLineWidth: 1,
+    title: 'joystick1'
+}, function (stickData) {
+    if(stickData.event_position !== 'joystick1'){
+        return
+    }
+    throttle = stickData.y
+    pitch = stickData.x
+    send_rc_data(throttle, pitch, roll, yaw, 0, 0)
 })
 
-var joy2IinputPosX = document.getElementById('joy2PosizioneX')
-var joy2InputPosY = document.getElementById('joy2PosizioneY')
-var joy2Direzione = document.getElementById('joy2Direzione')
-var joy2X = document.getElementById('joy2X')
-var joy2Y = document.getElementById('joy2Y')
-var Joy2 = new JoyStick('joy2Div', {}, function (stickData) {
-    joy2IinputPosX.value = stickData.xPosition
-    joy2InputPosY.value = stickData.yPosition
-    joy2Direzione.value = stickData.cardinalDirection
-    joy2X.value = stickData.x
-    joy2Y.value = stickData.y
+var Joy2 = new JoyStick('joy2Div', {
+    internalLineWidth: 1,
+    externalLineWidth: 1,
+    title: 'joystick2'
+}, function (stickData) {
+    if(stickData.event_position !== 'joystick2'){
+        return
+    }
+    roll = stickData.x
+    yaw = stickData.y
+    send_rc_data(throttle, pitch, roll, yaw, 0, 0)
 })
+
+function startFly () {
+    console.log('startFly')
+    send_rc_data(0, 0, 0, 0, 1, 0)
+}
+
+function FlyDown () {
+    console.log('FlyDown')
+    send_rc_data(0, 0, 0, 0, 0, 1)
+}
+
 </script>
 </body>
 </html>

@@ -39,6 +39,10 @@ pid_yaw_kp: float = 0.001714287
 pid_yaw_ki: float = 0.003428571
 pid_yaw_kd: float = 0.0
 
+# Config Max Min rc range
+MIN_RC_CONTROL = 1000.0
+MAX_RC_CONTROL = 2000.0
+
 ########################################
 ########################################
 ########################################
@@ -188,13 +192,23 @@ def run() -> None:
 
             # Read control commands from RC
             rc_data = rc.read()
+            # FS-i6,将IBus返回七个整数值的列表
+            # 例如：[1、1499、1498、1002、1500、1000、1000 ]
+            # 0: 返回列表的状态1。意味着这是一个有效的数据包（新值）
+            # 1: 右摇杆的水平轴，控制滚动速率 (1000-2000)
+            # 2: 右摇杆的垂直轴，控制音调速率 (1000-2000)
+            # 3  左摇杆的垂直轴，控制所有四个电机的平均推力（油门），控制四轴飞行器是上升还是下降 (1000-2000)
+            # 4: 左摇杆的水平轴。控制偏航率 (1000-2000)
+
+            # 5: 来读取发射器上开关1000的值，SWA这是控制器左上方的小开关（自定义看惯）
+            # 6: 来读取发射器上开关1000的值，SWB这是控制器左上方的大开关，位于 SWA 的右侧（自定义开关）
 
             # normalize all RC input values
-            input_throttle: float = normalize(rc_data[3], 1000.0, 2000.0, 0.0, 1.0)  # between 0.0 and 1.0
-            input_pitch: float = (normalize(rc_data[2], 1000.0, 2000.0, -1.0,
+            input_throttle: float = normalize(rc_data[3], MIN_RC_CONTROL, MAX_RC_CONTROL, 0.0, 1.0)  # between 0.0 and 1.0
+            input_pitch: float = (normalize(rc_data[2], MIN_RC_CONTROL, MAX_RC_CONTROL, -1.0,
                                             1.0)) * -1  # between -1.0 and 1.0. We multiply by -1 because... If the pitch is "full forward" (i.e. 75), that means we want a NEGATIVE pitch (when a plane pitches it's nose down, that is negative, not positive. And when a place pitches it's nose up, pulling back on the stick, it's positive, not negative.) Thus, we need to flip it.
-            input_roll: float = normalize(rc_data[1], 1000.0, 2000.0, -1.0, 1.0)  # between -1.0 and 1.0
-            input_yaw: float = normalize(rc_data[4], 1000.0, 2000.0, -1.0, 1.0)  # between -1.0 and 1.0
+            input_roll: float = normalize(rc_data[1], MIN_RC_CONTROL, MAX_RC_CONTROL, -1.0, 1.0)  # between -1.0 and 1.0
+            input_yaw: float = normalize(rc_data[4], MIN_RC_CONTROL, MAX_RC_CONTROL, -1.0, 1.0)  # between -1.0 and 1.0
 
             # ADJUST MOTOR OUTPUTS!
             # based on channel 5. Channel 5 I have assigned to the switch that determines flight mode (standby/flight)
