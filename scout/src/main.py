@@ -148,7 +148,6 @@ def run() -> None:
     M2: machine.PWM = machine.PWM(machine.Pin(gpio_motor2))
     M3: machine.PWM = machine.PWM(machine.Pin(gpio_motor3))
     M4: machine.PWM = machine.PWM(machine.Pin(gpio_motor4))
-    M1.freq(250)
     M2.freq(250)
     M3.freq(250)
     M4.freq(250)

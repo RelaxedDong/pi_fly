@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Live Temperature Dashboard</title>
+    <style>
+        * {
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            -khtml-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
+        input {
+            -webkit-user-select: auto; /*webkit浏览器*/
+        }
+        html, body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden; /* 防止溢出 */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #333;
+            color: #fff;
+            font-family: Arial, sans-serif;
+        }
+
+        .content {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* 垂直方向的布局 */
+        body.portrait .content {
+            flex-direction: column;
+            width: 100vw; /* 使用视口的宽度作为内容区宽度 */
+            height: 100vh; /* 使用视口的高度作为内容区高度 */
+        }
+
+        /* 水平方向的布局 */
+        body.landscape .content {
+            flex-direction: row;
+            width: 100vh; /* 使用视口的高度作为内容区宽度 */
+            height: 100vw; /* 使用视口的宽度作为内容区高度 */
+        }
+
+        .text-center {
+            text-align: center;
+            margin: 10px 0;
+        }
+
+        .controller {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .row {
+            display: flex;
+            margin: 0 10px;
+        }
+
+        .button {
+            font-size: 60px;
+            background-color: #555;
+            border: none;
+            color: white;
+            margin: 0px 10px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            cursor: pointer;
+            border-radius: 50px;
+            transition: background-color 0.3s;
+        }
+
+        .left-button {
+            background-color: #409EFF; /* 蓝色 */
+        }
+
+        .right-button {
+            background-color: #E6A23C; /* 橙色 */
+        }
+
+        .center-btn {
+            transform: rotate(-90deg);
+            display: flex;
+            font-size: 30px;
+            flex-direction: column;
+            align-items: center; /* 居中对齐 */
+            position: relative;
+        }
+
+        .center-btn button {
+            margin-top: 20px;
+            font-size: 30px;
+            background-color: #67C23A;
+            color: white;
+            border: 0;
+            padding: 10px 20px;
+            border-radius: 5px;
+        }
+
+        button:hover {
+            background-color: #E6A23C;
+        }
+
+        .switch {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 20px;
+        }
+
+        .switch input[type="checkbox"] {
+            display: none;
+        }
+
+        .switch label {
+            background-color: #555;
+            border-radius: 20px;
+            cursor: pointer;
+            height: 34px;
+            position: relative;
+            width: 60px;
+        }
+
+        .switch label::after {
+            background-color: #fff;
+            border-radius: 50%;
+            content: "";
+            height: 26px;
+            left: 4px;
+            position: absolute;
+            top: 4px;
+            transition: 0.3s;
+            width: 26px;
+        }
+
+        .switch input[type="checkbox"]:checked + label::after {
+            left: 30px;
+        }
+
+        .switch input[type="checkbox"]:checked + label {
+            background-color: #67C23A;
+        }
+
+        /* 旋转时中间文字的样式 */
+        body.landscape .center-btn {
+            transform: rotate(-90deg);
+            transform-origin: center;
+        }
+    </style>
+    <script>
+        // 检测设备方向变化并添加合适的类名
+        function checkOrientation() {
+            if (window.innerWidth > window.innerHeight) {
+                document.body.classList.add('landscape');
+                document.body.classList.remove('portrait');
+            } else {
+                document.body.classList.add('portrait');
+                document.body.classList.remove('landscape');
+            }
+        }
+    </script>
+</head>
+<body>
+<div class="content">
+    <div class="controller">
+        <div class="row">
+            <button class="button left-button" id="left-up">▲</button>
+        </div>
+        <div class="row">
+            <button class="button left-button" id="left-left">◄</button>
+            <button class="button left-button" id="left-right">►</button>
+        </div>
+        <div class="row">
+            <button class="button left-button" id="left-down">▼</button>
+        </div>
+    </div>
+    <div class="center-btn">
+        <div class="switch">
+            <input type="checkbox" id="toggle-switch" onclick="toggleSwitch(this)" disabled>
+            <label for="toggle-switch"></label>
+        </div>
+        <div class="text-center" id="connection_status"></div>
+
+    </div>
+    <div class="controller">
+        <div class="row">
+            <button class="button right-button" id="right-up">▲</button>
+        </div>
+        <div class="row">
+            <button class="button right-button" id="right-left">◄</button>
+            <button class="button right-button" id="right-right">►</button>
+        </div>
+        <div class="row">
+            <button class="button right-button" id="right-down">▼</button>
+        </div>
+    </div>
+</div>
+
+<script>
+function updateLayout () {
+    if (window.innerHeight > window.innerWidth) {
+        document.body.classList.add('portrait')
+        document.body.classList.remove('landscape')
+    } else {
+        document.body.classList.add('landscape')
+        document.body.classList.remove('portrait')
+    }
+}
+
+window.addEventListener('resize', updateLayout)
+window.addEventListener('orientationchange', updateLayout)
+
+// 初始化时调用一次
+updateLayout()
+var socket = new WebSocket('ws://' + location.host + '/control')
+socket.onopen = onOpen
+socket.onclose = onClose
+socket.onmessage = onMessage
+
+function onOpen (event) {
+    console.log('Starting connection to WebSocket server..')
+    // Enable the checkbox when the connection is established
+    document.getElementById('toggle-switch').disabled = false
+}
+
+function onClose (event) {
+    console.log('Closing connection to server..')
+    // Optionally disable the checkbox when the connection is closed
+    document.getElementById('toggle-switch').disabled = true
+}
+
+function onMessage (event) {
+    let event_data = parseInt(event.data)
+    if (event_data === 1) {
+        alert('连接成功...')
+    }
+    console.log('WebSocket message received:', event_data)
+}
+
+const MID_VALUE = 1500;
+const MAX_VALUE = 1700;
+const MIN_VALUE = 1300;
+
+
+var buttonStates = {
+    throttle: MID_VALUE,
+    pitch: MID_VALUE,
+    roll: MID_VALUE,
+    yaw: MID_VALUE
+};
+
+var intervalId = null;
+var activeButtons = {
+    'left-up': false,
+    'left-left': false,
+    'left-right': false,
+    'left-down': false,
+    'right-up': false,
+    'right-left': false,
+    'right-right': false,
+    'right-down': false
+};
+
+function sendControlsendControlCommandCommand() {
+    var command = [
+        1,
+        buttonStates.roll,
+        buttonStates.pitch,
+        buttonStates.throttle,
+        buttonStates.yaw
+    ];
+    socket.send(command);
+}
+
+
+
+const buttonMap = {
+    'left-up': 'pitch',
+    'left-left': 'roll',
+    'left-right': 'roll',
+    'left-down': 'pitch',
+    'right-up': 'throttle',
+    'right-left': 'yaw',
+    'right-right': 'yaw',
+    'right-down': 'throttle'
+};
+
+const valueMap = {
+    'left-up': MAX_VALUE,
+    'left-left': MIN_VALUE,
+    'left-right': MAX_VALUE,
+    'left-down': MIN_VALUE,
+    'right-up': MAX_VALUE,
+    'right-left': MIN_VALUE,
+    'right-right': MAX_VALUE,
+    'right-down': MIN_VALUE
+};
+
+
+function MouseDown() {
+    activeButtons[this.id] = true;
+    updateButtonStates();
+    console.log(buttonStates);
+}
+
+function MouseUp() {
+    activeButtons[this.id] = false;
+    buttonStates[buttonMap[this.id]] = MID_VALUE
+}
+
+function updateButtonStates() {
+    for (let button in activeButtons) {
+        if (activeButtons[button]) {
+            buttonStates[buttonMap[button]] = valueMap[button];
+        }
+    }
+}
+
+document.getElementById('left-up').addEventListener('mousedown', function () { MouseDown.call(this) });
+document.getElementById('left-left').addEventListener('mousedown', function () { MouseDown.call(this) });
+document.getElementById('left-right').addEventListener('mousedown', function () { MouseDown.call(this) });
+document.getElementById('left-down').addEventListener('mousedown', function () { MouseDown.call(this) });
+
+document.getElementById('right-up').addEventListener('mousedown', function () { MouseDown.call(this) });
+document.getElementById('right-left').addEventListener('mousedown', function () { MouseDown.call(this) });
+document.getElementById('right-right').addEventListener('mousedown', function () { MouseDown.call(this) });
+document.getElementById('right-down').addEventListener('mousedown', function () { MouseDown.call(this) });
+
+
+document.getElementById('left-up').addEventListener('mouseup', function () { MouseUp.call(this) });
+document.getElementById('left-left').addEventListener('mouseup', function () { MouseUp.call(this) });
+document.getElementById('left-right').addEventListener('mouseup', function () { MouseUp.call(this) });
+document.getElementById('left-down').addEventListener('mouseup', function () { MouseUp.call(this) });
+
+document.getElementById('right-up').addEventListener('mouseup', function () { MouseUp.call(this) });
+document.getElementById('right-left').addEventListener('mouseup', function () { MouseUp.call(this) });
+document.getElementById('right-right').addEventListener('mouseup', function () { MouseUp.call(this) });
+document.getElementById('right-down').addEventListener('mouseup', function () { MouseUp.call(this) });
+
+
+function toggleSwitch (element) {
+    if (element.checked) {
+        sendControlCommand(1)
+    } else {
+        sendControlCommand(0)
+    }
+}
+
+function startFly () {
+    sendControlCommand(2)
+}
+
+function FlyDown () {
+    sendControlCommand(3)
+}
+</script>
+</body>
+</html>

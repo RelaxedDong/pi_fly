@@ -47,4 +47,4 @@ def ap_mode(ssid, password):
         conn.close()
 
 
-ap_mode('pihahaha','dt20171008.')
+ap_mode('pihahaha', 'dt20171008.')
