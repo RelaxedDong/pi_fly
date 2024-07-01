@@ -13,9 +13,11 @@
             -ms-user-select: none;
             user-select: none;
         }
+
         input {
             -webkit-user-select: auto; /*webkit浏览器*/
         }
+
         html, body {
             width: 100%;
             height: 100%;
@@ -28,6 +30,7 @@
             background-color: #333;
             color: #fff;
             font-family: Arial, sans-serif;
+            touch-action: manipulation;
         }
 
         .content {
@@ -43,18 +46,6 @@
             height: 100vh; /* 使用视口的高度作为内容区高度 */
         }
 
-        /* 水平方向的布局 */
-        body.landscape .content {
-            flex-direction: row;
-            width: 100vh; /* 使用视口的高度作为内容区宽度 */
-            height: 100vw; /* 使用视口的宽度作为内容区高度 */
-        }
-
-        .text-center {
-            text-align: center;
-            margin: 10px 0;
-        }
-
         .controller {
             display: flex;
             flex-direction: column;
@@ -67,16 +58,18 @@
         }
 
         .button {
-            font-size: 60px;
+            font-size: 30px;
             background-color: #555;
             border: none;
             color: white;
-            margin: 0px 10px;
+            padding: 20px;
+            box-sizing: border-box;
             text-align: center;
             text-decoration: none;
             display: inline-block;
             cursor: pointer;
-            border-radius: 50px;
+            border-radius: 50%;
+            margin: 0 50px;
             transition: background-color 0.3s;
         }
 
@@ -89,28 +82,30 @@
         }
 
         .center-btn {
-            transform: rotate(-90deg);
+            transform: rotate(90deg);
             display: flex;
-            font-size: 30px;
+            font-size: 20px;
             flex-direction: column;
             align-items: center; /* 居中对齐 */
             position: relative;
         }
 
         .center-btn button {
-            margin-top: 20px;
-            font-size: 30px;
+            margin-top: 10px;
+            font-size: 10px;
             background-color: #67C23A;
             color: white;
             border: 0;
-            padding: 10px 20px;
+            padding: 5px 10px;
             border-radius: 5px;
         }
 
-        button:hover {
+        button:active {
             background-color: #E6A23C;
         }
-
+        .text-red {
+            color: #ff5a7a;
+        }
         .switch {
             display: flex;
             flex-direction: column;
@@ -151,37 +146,23 @@
             background-color: #67C23A;
         }
 
-        /* 旋转时中间文字的样式 */
-        body.landscape .center-btn {
-            transform: rotate(-90deg);
-            transform-origin: center;
-        }
+
     </style>
     <script>
-        // 检测设备方向变化并添加合适的类名
-        function checkOrientation() {
-            if (window.innerWidth > window.innerHeight) {
-                document.body.classList.add('landscape');
-                document.body.classList.remove('portrait');
-            } else {
-                document.body.classList.add('portrait');
-                document.body.classList.remove('landscape');
-            }
-        }
     </script>
 </head>
 <body>
 <div class="content">
     <div class="controller">
         <div class="row">
-            <button class="button left-button" id="left-up">▲</button>
+            <button class="button left-button" id="left-up">↑</button>
         </div>
         <div class="row">
-            <button class="button left-button" id="left-left">◄</button>
-            <button class="button left-button" id="left-right">►</button>
+            <button class="button left-button" id="left-left">←</button>
+            <button class="button left-button" id="left-right">→</button>
         </div>
         <div class="row">
-            <button class="button left-button" id="left-down">▼</button>
+            <button class="button left-button" id="left-down">↓</button>
         </div>
     </div>
     <div class="center-btn">
@@ -189,19 +170,19 @@
             <input type="checkbox" id="toggle-switch" onclick="toggleSwitch(this)" disabled>
             <label for="toggle-switch"></label>
         </div>
-        <div class="text-center" id="connection_status"></div>
-
+        <div class="text-center" id="connection_status">已关闭</div>
+        <div class="text-center text-red" id="error-tip"></div>
     </div>
     <div class="controller">
         <div class="row">
-            <button class="button right-button" id="right-up">▲</button>
+            <button class="button right-button" id="right-up">↑</button>
         </div>
         <div class="row">
-            <button class="button right-button" id="right-left">◄</button>
-            <button class="button right-button" id="right-right">►</button>
+            <button class="button right-button" id="right-left">←</button>
+            <button class="button right-button" id="right-right">→</button>
         </div>
         <div class="row">
-            <button class="button right-button" id="right-down">▼</button>
+            <button class="button right-button" id="right-down">↓</button>
         </div>
     </div>
 </div>
@@ -219,18 +200,22 @@ function updateLayout () {
 
 window.addEventListener('resize', updateLayout)
 window.addEventListener('orientationchange', updateLayout)
-
-// 初始化时调用一次
 updateLayout()
+
 var socket = new WebSocket('ws://' + location.host + '/control')
 socket.onopen = onOpen
 socket.onclose = onClose
 socket.onmessage = onMessage
+socket.onerror = onError
 
 function onOpen (event) {
     console.log('Starting connection to WebSocket server..')
     // Enable the checkbox when the connection is established
     document.getElementById('toggle-switch').disabled = false
+}
+
+function onError(event) {
+    alert('连接服务器失败,请检查网络')
 }
 
 function onClose (event) {
@@ -239,27 +224,55 @@ function onClose (event) {
     document.getElementById('toggle-switch').disabled = true
 }
 
-function onMessage (event) {
-    let event_data = parseInt(event.data)
-    if (event_data === 1) {
-        alert('连接成功...')
+var open_controller = 0
+var start_fly = 0
+var stop_fly = 0
+
+function toggleSwitch (element) {
+    if (element.checked) {
+        open_controller = 1
+        socket.send([-1]) // 开关特殊指令，测试是否能访问服务
+    } else {
+        open_controller = 0
+        document.getElementById('connection_status').innerText = '已关闭'
     }
-    console.log('WebSocket message received:', event_data)
 }
 
-const MID_VALUE = 1500;
-const MAX_VALUE = 1700;
-const MIN_VALUE = 1300;
+function startFly () {
+    start_fly = 1
+    sendControllerCommand()
+    start_fly = 0
+}
 
+function stopFly () {
+    stop_fly = 1
+    sendControllerCommand()
+    stop_fly = 0
+}
+
+function onMessage (event) {
+    const data = event.data;
+    console.log('data', data)
+    if (data === 'opened') {
+        document.getElementById('connection_status').innerText = '已连接'
+    } else if (data === 'closed') {
+        clearTimer()
+        alert('控制器已关闭!')
+    }
+}
+
+const MID_VALUE = 1500
+const MAX_VALUE = 1700
+const MIN_VALUE = 1300
 
 var buttonStates = {
     throttle: MID_VALUE,
     pitch: MID_VALUE,
     roll: MID_VALUE,
     yaw: MID_VALUE
-};
+}
 
-var intervalId = null;
+var intervalId = null
 var activeButtons = {
     'left-up': false,
     'left-left': false,
@@ -269,31 +282,31 @@ var activeButtons = {
     'right-left': false,
     'right-right': false,
     'right-down': false
-};
+}
 
-function sendControlsendControlCommandCommand() {
-    var command = [
-        1,
+function sendControllerCommand () {
+    socket.send([
+        open_controller,
         buttonStates.roll,
         buttonStates.pitch,
         buttonStates.throttle,
-        buttonStates.yaw
-    ];
-    socket.send(command);
+        buttonStates.yaw,
+        // 其它自定义开关状态
+        start_fly,
+        stop_fly
+    ])
 }
 
-
-
 const buttonMap = {
-    'left-up': 'pitch',
-    'left-left': 'roll',
-    'left-right': 'roll',
-    'left-down': 'pitch',
-    'right-up': 'throttle',
-    'right-left': 'yaw',
-    'right-right': 'yaw',
-    'right-down': 'throttle'
-};
+    'left-up': 'throttle',
+    'left-left': 'yaw',
+    'left-right': 'yaw',
+    'left-down': 'throttle',
+    'right-up': 'pitch',
+    'right-left': 'roll',
+    'right-right': 'roll',
+    'right-down': 'pitch'
+}
 
 const valueMap = {
     'left-up': MAX_VALUE,
@@ -304,65 +317,58 @@ const valueMap = {
     'right-left': MIN_VALUE,
     'right-right': MAX_VALUE,
     'right-down': MIN_VALUE
-};
-
-
-function MouseDown() {
-    activeButtons[this.id] = true;
-    updateButtonStates();
-    console.log(buttonStates);
 }
 
-function MouseUp() {
-    activeButtons[this.id] = false;
+function MouseDown () {
+    activeButtons[this.id] = true
+    buttonStates[buttonMap[this.id]] = valueMap[this.id]
+    updateButtonStates()
+}
+
+function MouseUp () {
+    activeButtons[this.id] = false
     buttonStates[buttonMap[this.id]] = MID_VALUE
+    updateButtonStates()
 }
 
-function updateButtonStates() {
+var timer = null
+
+
+function clearTimer() {
+    clearTimeout(timer)
+    timer = null
+}
+
+function updateButtonStates () {
+    let isMouseDown = false
     for (let button in activeButtons) {
         if (activeButtons[button]) {
-            buttonStates[buttonMap[button]] = valueMap[button];
+            isMouseDown = true
         }
     }
-}
-
-document.getElementById('left-up').addEventListener('mousedown', function () { MouseDown.call(this) });
-document.getElementById('left-left').addEventListener('mousedown', function () { MouseDown.call(this) });
-document.getElementById('left-right').addEventListener('mousedown', function () { MouseDown.call(this) });
-document.getElementById('left-down').addEventListener('mousedown', function () { MouseDown.call(this) });
-
-document.getElementById('right-up').addEventListener('mousedown', function () { MouseDown.call(this) });
-document.getElementById('right-left').addEventListener('mousedown', function () { MouseDown.call(this) });
-document.getElementById('right-right').addEventListener('mousedown', function () { MouseDown.call(this) });
-document.getElementById('right-down').addEventListener('mousedown', function () { MouseDown.call(this) });
-
-
-document.getElementById('left-up').addEventListener('mouseup', function () { MouseUp.call(this) });
-document.getElementById('left-left').addEventListener('mouseup', function () { MouseUp.call(this) });
-document.getElementById('left-right').addEventListener('mouseup', function () { MouseUp.call(this) });
-document.getElementById('left-down').addEventListener('mouseup', function () { MouseUp.call(this) });
-
-document.getElementById('right-up').addEventListener('mouseup', function () { MouseUp.call(this) });
-document.getElementById('right-left').addEventListener('mouseup', function () { MouseUp.call(this) });
-document.getElementById('right-right').addEventListener('mouseup', function () { MouseUp.call(this) });
-document.getElementById('right-down').addEventListener('mouseup', function () { MouseUp.call(this) });
-
-
-function toggleSwitch (element) {
-    if (element.checked) {
-        sendControlCommand(1)
+    if (isMouseDown) {
+        timer = setInterval(function () {sendControllerCommand()}, 40)
     } else {
-        sendControlCommand(0)
+        clearTimer()
+        sendControllerCommand()
     }
 }
 
-function startFly () {
-    sendControlCommand(2)
-}
-
-function FlyDown () {
-    sendControlCommand(3)
-}
+// 定义包含所有元素ID的数组
+const elementIds = ['left-up', 'left-left', 'left-right', 'left-down', 'right-up', 'right-left', 'right-right', 'right-down']
+elementIds.forEach(id => {
+    const element = document.getElementById(id)
+    if (element) {
+        element.addEventListener('touchstart', function (event) {
+            event.preventDefault()
+            MouseDown.call(this)
+        })
+        element.addEventListener('touchend', function (event) {
+            event.preventDefault()
+            MouseUp.call(this)
+        })
+    }
+})
 </script>
 </body>
 </html>
