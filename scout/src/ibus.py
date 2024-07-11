@@ -42,7 +42,7 @@ class IBus ():
     def read(self):
         # Max 10 attempts to read
         for z in range(10):
-            buffer = bytearray (31)
+            buffer = bytearray(31)
             char = self.uart.read(1)
             # check for 0x20
             if char == b'\x20':

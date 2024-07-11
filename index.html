@@ -106,6 +106,10 @@
         .text-red {
             color: #ff5a7a;
         }
+        .bg-red {
+            background-color: #ff5a7a;
+            color: white;
+        }
         .switch {
             display: flex;
             flex-direction: column;
@@ -171,7 +175,6 @@
             <label for="toggle-switch"></label>
         </div>
         <div class="text-center" id="connection_status">已关闭</div>
-        <div class="text-center text-red" id="error-tip"></div>
     </div>
     <div class="controller">
         <div class="row">
@@ -234,7 +237,7 @@ function toggleSwitch (element) {
         socket.send([-1]) // 开关特殊指令，测试是否能访问服务
     } else {
         open_controller = 0
-        document.getElementById('connection_status').innerText = '已关闭'
+        socket.send([0])
     }
 }
 
@@ -257,7 +260,7 @@ function onMessage (event) {
         document.getElementById('connection_status').innerText = '已连接'
     } else if (data === 'closed') {
         clearTimer()
-        alert('控制器已关闭!')
+        document.getElementById('connection_status').innerText = '已关闭'
     }
 }
 
