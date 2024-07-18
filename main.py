@@ -116,11 +116,11 @@ def main():
         try:
             if fly_running:
                 throttle = receive_data[3]
-                pct = map_remote_to_pwm(throttle)
-                set_duty_cycle(pct)
                 if throttle == 1500:
                     set_duty_cycle(5 + 5 * balance_pct)
-                time.sleep(1)
+                else:
+                    pct = map_remote_to_pwm(throttle)
+                    set_duty_cycle(pct)
             else:
                 print('wait for start...')
                 time.sleep(5)
